@@ -11,13 +11,13 @@ st.title("🏦 Customer Category Prediction App")
 model = joblib.load("rf_final_model1.pkl")
 scaler = joblib.load("scaler1.pkl")
 
-# Define the top 15 features used for training (replace with actual if needed)
+# Corrected feature names (must match those used in training)
 top_features = [
     'Credit_History_Age_Months', 'Outstanding_Debt', 'Num_Credit_Inquiries',
     'Interest_Rate', 'Delay_from_due_date', 'Num_Bank_Accounts',
     'Num_Credit_Card', 'Monthly_Balance', 'Annual_Income', 'Age',
-    'Num_of_Delayed_Payment', 'Monthly_Inhand_Salary', 'Personal_Loan',
-    'Credit_Utilization_Ratio', 'Mortgage_Loan'
+    'Num_of_Delayed_Payment', 'Monthly_Inhand_Salary', 'Personal Loan',
+    'Credit_Utilization_Ratio', 'Mortgage Loan'
 ]
 
 # Label encoding map (same as in training)
