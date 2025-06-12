@@ -3,75 +3,79 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Set page configuration
+# App configuration
 st.set_page_config(page_title="Customer Category Predictor", layout="centered")
 st.title("🏦 Customer Category Prediction App")
 
-# Load model and scaler
-model = joblib.load("rf_final_model1.pkl")
-scaler = joblib.load("scaler1.pkl")
+# Load trained model and scaler
+model = joblib.load("rf_final_model1.pkl")  # Make sure this file exists
+scaler = joblib.load("scaler1.pkl")         # Make sure this file exists
 
-# Corrected feature names (must match those used in training)
+# Final top 10 features used in model training
 top_features = [
-    'Credit_History_Age_Months', 'Outstanding_Debt', 'Num_Credit_Inquiries',
-    'Interest_Rate', 'Delay_from_due_date', 'Num_Bank_Accounts',
-    'Num_Credit_Card', 'Monthly_Balance', 'Annual_Income', 'Age',
-    'Num_of_Delayed_Payment', 'Monthly_Inhand_Salary', 'Personal Loan',
-    'Credit_Utilization_Ratio', 'Mortgage Loan'
+    "Credit_History_Age_Months",
+    "Outstanding_Debt",
+    "Num_of_Loan",
+    "Interest_Rate",
+    "Payment_of_Min_Amount",
+    "Num_Credit_Inquiries",
+    "Delay_from_due_date",
+    "Annual_Income",
+    "Total_EMI_per_month",
+    "Age"
 ]
 
-# Sidebar: select input method
-st.sidebar.header("📥 Select Input Method")
-input_mode = st.sidebar.radio("Choose how you want to enter data:", ["Manual Entry", "Upload CSV"])
+# Customer category label map
+label_map = {
+    0: "Established Customer",
+    1: "Growing Customer",
+    2: "Legacy Customer",
+    3: "Loyal Customer",
+    4: "New Customer"
+}
 
-# --- Manual Input Mode ---
+# Sidebar: input method
+st.sidebar.header("📥 Select Input Method")
+input_mode = st.sidebar.radio("Choose input method:", ["Manual Entry", "Upload CSV"])
+
+# --- Manual Input ---
 if input_mode == "Manual Entry":
     st.subheader("📝 Enter Customer Details")
-    with st.form("manual_form"):
+    with st.form("input_form"):
         user_input = {}
         for feature in top_features:
-            user_input[feature] = st.number_input(f"{feature}", value=0.0)
+            user_input[feature] = st.number_input(f"{feature}", value=0.0, step=0.1)
         submitted = st.form_submit_button("Predict")
 
     if submitted:
         df_input = pd.DataFrame([user_input])
         df_scaled = scaler.transform(df_input)
         pred = model.predict(df_scaled)[0]
-        label_map = {
-        0: "Established Customer",
-        1: "Growing Customer",
-        2: "Legacy Customer",
-        3: "Loyal Customer",
-        4: "New Customer"}
         label = label_map.get(pred, "Unknown")
         st.success(f"🎯 Predicted Category: **{label}**")
 
-# --- CSV Upload Mode ---
+# --- CSV Upload ---
 else:
-    st.subheader("📁 Upload CSV File for Bulk Prediction")
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+    st.subheader("📁 Upload CSV for Bulk Prediction")
+    uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
 
     if uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file)
-            if not all(feature in df.columns for feature in top_features):
-                st.error(f"❌ CSV must contain these columns: {', '.join(top_features)}")
+            if not all(col in df.columns for col in top_features):
+                missing = set(top_features) - set(df.columns)
+                st.error(f"❌ Missing columns: {', '.join(missing)}")
             else:
                 X = df[top_features].fillna(0)
                 X_scaled = scaler.transform(X)
-                predictions = model.predict(X_scaled)
-                label_map = {
-                    0: "Established Customer",
-                    1: "Growing Customer",
-                    2: "Legacy Customer",
-                    3: "Loyal Customer",
-                    4: "New Customer"}
-                df["Predicted Category"] = [label_map.get(p, "Unknown") for p in predictions]
+                preds = model.predict(X_scaled)
+                df["Predicted Category"] = [label_map.get(p, "Unknown") for p in preds]
 
-                st.success("✅ Prediction Complete!")
+                st.success("✅ Prediction complete!")
                 st.dataframe(df)
 
+                # Download button
                 csv = df.to_csv(index=False).encode()
-                st.download_button("📥 Download Results", csv, "predictions.csv", "text/csv")
+                st.download_button("📥 Download Predictions", csv, "customer_predictions.csv", "text/csv")
         except Exception as e:
-            st.error(f"⚠️ Error processing file: {e}")
+            st.error(f"⚠️ Error: {e}")
