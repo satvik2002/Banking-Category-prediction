@@ -11,26 +11,48 @@ st.title("🏦 Customer Category Prediction App")
 model = joblib.load("rf_final_model1.pkl")
 scaler = joblib.load("scaler1.pkl")
 
-# Correct top features used in training
+# Final feature list used during training
 top_features = [
-    "Credit_History_Age_Months", "Outstanding_Debt", "Num_of_Loan",
-    "Interest_Rate", "Payment_of_Min_Amount", "Num_Credit_Inquiries",
-    "Delay_from_due_date", "Annual_Income", "Total_EMI_per_month", "Age"
+    'Credit_History_Age_Months',
+    'Num_Credit_Card',
+    'Num_Bank_Accounts',
+    'Monthly_Balance',
+    'Monthly_Inhand_Salary',
+    'Annual_Income',
+    'Age',
+    'Num_of_Loan',
+    'Changed_Credit_Limit',
+    'Occupation',
+    'Amount_invested_monthly',
+    'Payment_of_Min_Amount',
+    'Credit_Mix',
+    'Payment_Behaviour'
 ]
 
-# Optional: example defaults for manual input
+# Example defaults for manual mode
 example_defaults = {
-    "Credit_History_Age_Months": 120,
-    "Outstanding_Debt": 1500.5,
-    "Num_of_Loan": 3,
-    "Interest_Rate": 12.5,
-    "Payment_of_Min_Amount": 1,  # 1 for Yes, 0 for No
-    "Num_Credit_Inquiries": 2,
-    "Delay_from_due_date": 4,
-    "Annual_Income": 75000,
-    "Total_EMI_per_month": 1200,
-    "Age": 35
+    'Credit_History_Age_Months': 120,
+    'Num_Credit_Card': 2,
+    'Num_Bank_Accounts': 3,
+    'Monthly_Balance': 5000,
+    'Monthly_Inhand_Salary': 25000,
+    'Annual_Income': 600000,
+    'Age': 35,
+    'Num_of_Loan': 1,
+    'Changed_Credit_Limit': 1000,
+    'Occupation': 'Engineer',
+    'Amount_invested_monthly': 1500,
+    'Payment_of_Min_Amount': 'Yes',
+    'Credit_Mix': 'Good',
+    'Payment_Behaviour': 'High_spent_Large_value_payments'
 }
+
+# Categorical columns (must match training)
+categorical_cols = ['Occupation', 'Payment_of_Min_Amount', 'Credit_Mix', 'Payment_Behaviour']
+
+# Load encoders for categorical features
+encoders = joblib.load("encoders_selected.pkl")
+target_encoder = joblib.load("target_encoder.pkl")
 
 # Sidebar input method
 st.sidebar.header("📥 Select Input Method")
@@ -41,23 +63,20 @@ if input_mode == "Manual Entry":
     st.subheader("📝 Enter Customer Details")
     with st.form("manual_form"):
         user_input = {}
-        for feature in top_features:
-            default = example_defaults.get(feature, 0.0)
-            user_input[feature] = st.number_input(f"{feature}", value=default)
+        for col in top_features:
+            if col in categorical_cols:
+                user_input[col] = st.selectbox(f"{col}", encoders[col].classes_.tolist())
+            else:
+                user_input[col] = st.number_input(f"{col}", value=example_defaults.get(col, 0.0))
         submitted = st.form_submit_button("Predict")
 
     if submitted:
         df_input = pd.DataFrame([user_input])
+        for col in categorical_cols:
+            df_input[col] = encoders[col].transform(df_input[col])
         df_scaled = scaler.transform(df_input)
         pred = model.predict(df_scaled)[0]
-        label_map = {
-            0: "Established Customer",
-            1: "Growing Customer",
-            2: "Legacy Customer",
-            3: "Loyal Customer",
-            4: "New Customer"
-        }
-        label = label_map.get(pred, "Unknown")
+        label = target_encoder.inverse_transform([pred])[0]
         st.success(f"🎯 Predicted Category: **{label}**")
 
 # --- CSV Mode ---
@@ -72,17 +91,13 @@ else:
             if missing_cols:
                 st.error(f"❌ Missing columns in CSV: {', '.join(missing_cols)}")
             else:
-                X = df[top_features].fillna(0)
-                X_scaled = scaler.transform(X)
-                predictions = model.predict(X_scaled)
-                label_map = {
-                    0: "Established Customer",
-                    1: "Growing Customer",
-                    2: "Legacy Customer",
-                    3: "Loyal Customer",
-                    4: "New Customer"
-                }
-                df["Predicted Category"] = [label_map.get(p, "Unknown") for p in predictions]
+                df = df[top_features].copy()
+                for col in categorical_cols:
+                    df[col] = encoders[col].transform(df[col].fillna(method="ffill"))
+                df = df.fillna(0)
+                df_scaled = scaler.transform(df)
+                predictions = model.predict(df_scaled)
+                df["Predicted Category"] = target_encoder.inverse_transform(predictions)
                 st.success("✅ Prediction Complete!")
                 st.dataframe(df)
 
