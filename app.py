@@ -3,15 +3,16 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# Set page configuration
+# Page setup
 st.set_page_config(page_title="Customer Category Predictor", layout="centered")
 st.title("🏦 Customer Category Prediction App")
 
-# Load model and scaler
+# Load model, scaler, encoder
 model = joblib.load("rf_final_model1.pkl")
 scaler = joblib.load("scaler1.pkl")
+encoder = joblib.load("encoder.pkl")  # LabelEncoder
 
-# Corrected feature names (must match those used in training)
+# Feature list used during training
 top_features = [
     'Credit_History_Age_Months', 'Outstanding_Debt', 'Num_Credit_Inquiries',
     'Interest_Rate', 'Delay_from_due_date', 'Num_Bank_Accounts',
@@ -20,18 +21,9 @@ top_features = [
     'Credit_Utilization_Ratio', 'Mortgage Loan'
 ]
 
-# Label encoding map (same as in training)
-label_mapping = {
-    0: "Established Customer",
-    1: "Growing Customer",
-    2: "Legacy Customer",
-    3: "Loyal Customer",
-    4: "New Customer"
-}
-
-# Sidebar: select input method
+# Sidebar input method selection
 st.sidebar.header("📥 Select Input Method")
-input_mode = st.sidebar.radio("Choose how you want to enter data:", ["Manual Entry", "Upload CSV"])
+input_mode = st.sidebar.radio("Choose how to enter data:", ["Manual Entry", "Upload CSV"])
 
 # --- Manual Input Mode ---
 if input_mode == "Manual Entry":
@@ -45,30 +37,32 @@ if input_mode == "Manual Entry":
     if submitted:
         df_input = pd.DataFrame([user_input])
         df_scaled = scaler.transform(df_input)
-        pred = model.predict(df_scaled)[0]
-        label = label_mapping.get(pred, "Unknown")
-        st.success(f"🎯 Predicted Category: **{label}**")
+        pred_class = model.predict(df_scaled)[0]
+        pred_label = encoder.inverse_transform([pred_class])[0]
+        st.success(f"🎯 Predicted Category: **{pred_label}**")
 
 # --- CSV Upload Mode ---
 else:
-    st.subheader("📁 Upload CSV File for Bulk Prediction")
+    st.subheader("📁 Upload CSV for Bulk Prediction")
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
-    if uploaded_file is not None:
+    if uploaded_file:
         try:
             df = pd.read_csv(uploaded_file)
-            if not all(feature in df.columns for feature in top_features):
-                st.error(f"❌ CSV must contain these columns: {', '.join(top_features)}")
+
+            # Ensure required columns are present
+            if not all(f in df.columns for f in top_features):
+                st.error(f"❌ CSV must include: {', '.join(top_features)}")
             else:
                 X = df[top_features].fillna(0)
                 X_scaled = scaler.transform(X)
-                predictions = model.predict(X_scaled)
-                df["Predicted Category"] = [label_mapping.get(p, "Unknown") for p in predictions]
+                preds = model.predict(X_scaled)
+                df["Predicted Category"] = encoder.inverse_transform(preds)
 
-                st.success("✅ Prediction Complete!")
+                st.success("✅ Predictions complete")
                 st.dataframe(df)
 
-                csv = df.to_csv(index=False).encode()
-                st.download_button("📥 Download Results", csv, "predictions.csv", "text/csv")
+                csv_data = df.to_csv(index=False).encode()
+                st.download_button("📥 Download Predictions", csv_data, "predictions.csv", "text/csv")
         except Exception as e:
-            st.error(f"⚠️ Error processing file: {e}")
+            st.error(f"⚠️ Error: {e}")
