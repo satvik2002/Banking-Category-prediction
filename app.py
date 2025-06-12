@@ -20,15 +20,6 @@ top_features = [
     'Credit_Utilization_Ratio', 'Mortgage Loan'
 ]
 
-# Label encoding map (same as in training)
-label_mapping = {
-    0: "Established Customer",
-    1: "Growing Customer",
-    2: "Legacy Customer",
-    3: "Loyal Customer",
-    4: "New Customer"
-}
-
 # Sidebar: select input method
 st.sidebar.header("📥 Select Input Method")
 input_mode = st.sidebar.radio("Choose how you want to enter data:", ["Manual Entry", "Upload CSV"])
@@ -46,7 +37,13 @@ if input_mode == "Manual Entry":
         df_input = pd.DataFrame([user_input])
         df_scaled = scaler.transform(df_input)
         pred = model.predict(df_scaled)[0]
-        label = label_mapping.get(pred, "Unknown")
+        label_map = {
+        0: "Established Customer",
+        1: "Growing Customer",
+        2: "Legacy Customer",
+        3: "Loyal Customer",
+        4: "New Customer"}
+        label = label_map.get(pred, "Unknown")
         st.success(f"🎯 Predicted Category: **{label}**")
 
 # --- CSV Upload Mode ---
@@ -63,7 +60,13 @@ else:
                 X = df[top_features].fillna(0)
                 X_scaled = scaler.transform(X)
                 predictions = model.predict(X_scaled)
-                df["Predicted Category"] = [label_mapping.get(p, "Unknown") for p in predictions]
+                label_map = {
+                    0: "Established Customer",
+                    1: "Growing Customer",
+                    2: "Legacy Customer",
+                    3: "Loyal Customer",
+                    4: "New Customer"}
+                df["Predicted Category"] = [label_map.get(p, "Unknown") for p in predictions]
 
                 st.success("✅ Prediction Complete!")
                 st.dataframe(df)
