@@ -8,8 +8,8 @@ st.set_page_config(page_title="Customer Category Predictor", layout="centered")
 st.title("🏦 Customer Category Prediction App")
 
 # Load trained model and scaler
-model = joblib.load("rf_final_model1.pkl")  # Make sure this file exists
-scaler = joblib.load("scaler1.pkl")         # Make sure this file exists
+model = joblib.load("rf_final_model1.pkl") 
+scaler = joblib.load("scaler1.pkl")         
 
 # Final top 10 features used in model training
 top_features = [
